@@ -31,10 +31,14 @@ int main(int argc, char **argv)
     }
 
     data = malloc(size);
-    if (!data)
+    if (!data) {
+        fclose(fp);
         return 1;
+    }
     if (fread(data, 1, size, fp) != size) {
         perror("fread");
+        fclose(fp);
+        free(data);
         return 1;
     }
     fclose(fp);

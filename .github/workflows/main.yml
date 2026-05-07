@@ -1,0 +1,107 @@
+# Build and validate vpipe.
+# CI stays Linux-only and limits itself to checks that are reproducible on
+# GitHub-hosted runners: style + static analysis, userspace build/tests, and
+# kmod compilation. Full integration remains on the Linux guest via
+# `sudo make check`.
+#
+# Parallelism (3 independent jobs):
+#   lint                  -- clang-format-20, newline, security, cppcheck
+#   user-build-and-test   -- userspace build + unit tests (no V4L2 device)
+#   build-kmod            -- out-of-tree module compile against generic headers
+name: Build vpipe
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Cancel superseded PR runs to save runner minutes; let push runs on main
+# complete so every commit on the branch keeps a green/red signal.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              clang-format-20 cppcheck file
+
+      - name: Check clang-format
+        run: .ci/check-format.sh
+
+      - name: Check trailing newline
+        run: .ci/check-newline.sh
+
+      - name: Security checks
+        run: .ci/check-security.sh
+
+      - name: Static analysis (cppcheck)
+        run: .ci/check-cppcheck.sh
+
+  user-build-and-test:
+    name: Userspace Build And Test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build userspace tools
+        run: make -C user
+
+      - name: Run userspace unit tests
+        run: make -C user test
+
+  build-kmod:
+    name: Kernel Module Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      # Use linux-headers-generic, not linux-headers-$(uname -r): hosted
+      # runners often run an Azure-flavored kernel whose exact headers
+      # package isn't in the default Ubuntu apt repo. This job only
+      # validates that the module compiles, never insmods, so any recent
+      # generic header set is acceptable.
+      - name: Install kernel headers
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends linux-headers-generic
+
+      - name: Build kernel module
+        run: |
+          set -euo pipefail
+          KDIR=$(ls -1d /usr/src/linux-headers-*-generic 2>/dev/null \
+              | sort -V | tail -n1)
+          if [ -z "$KDIR" ]; then
+              echo "no linux-headers-*-generic found under /usr/src" >&2
+              exit 1
+          fi
+          echo "building against KDIR=$KDIR"
+          make -C kmod KDIR="$KDIR"

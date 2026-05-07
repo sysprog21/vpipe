@@ -78,16 +78,20 @@ static void test_pgm_rejects_bad_dims(char *root)
     snprintf(path, sizeof(path), "%s/zero.pgm", root);
     fp = fopen(path, "wb");
     EXPECT(fp != NULL);
-    fprintf(fp, "P5\n0 0\n255\n");
-    fclose(fp);
-    EXPECT(vpipe_read_pgm(path, &img) < 0);
+    if (fp) {
+        fprintf(fp, "P5\n0 0\n255\n");
+        fclose(fp);
+        EXPECT(vpipe_read_pgm(path, &img) < 0);
+    }
 
     snprintf(path, sizeof(path), "%s/huge.pgm", root);
     fp = fopen(path, "wb");
     EXPECT(fp != NULL);
-    fprintf(fp, "P5\n100000 100000\n255\n");
-    fclose(fp);
-    EXPECT(vpipe_read_pgm(path, &img) < 0);
+    if (fp) {
+        fprintf(fp, "P5\n100000 100000\n255\n");
+        fclose(fp);
+        EXPECT(vpipe_read_pgm(path, &img) < 0);
+    }
 }
 
 static void test_threshold_full(void)

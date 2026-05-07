@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_script_dir()
+{
+    local source="${BASH_SOURCE[0]}"
+    while [ -L "$source" ]; do
+        local dir
+        dir=$(cd -P "$(dirname "$source")" && pwd) || return 1
+        source=$(readlink "$source") || return 1
+        [[ $source != /* ]] && source="$dir/$source"
+    done
+    cd -P "$(dirname "$source")" && pwd
+}
+
+script_dir=$(resolve_script_dir)
+. "$script_dir/common.sh"
+set_colors
+
+commit_msg_file="$1"
+warnings=()
+errors=()
+
+add_warning()
+{
+    warnings+=("$1")
+}
+
+add_error()
+{
+    errors+=("$1")
+}
+
+commit_msg_lines=()
+while IFS= read -r line; do
+    shopt -s extglob
+    line="${line%%*( )}"
+    shopt -u extglob
+    [[ $line == "# ------------------------ >8 ------------------------" ]] && break
+    [[ $line =~ ^# ]] && continue
+    commit_msg_lines+=("$line")
+done <"$commit_msg_file"
+
+while [ ${#commit_msg_lines[@]} -gt 0 ] && [ -z "${commit_msg_lines[-1]}" ]; do
+    unset 'commit_msg_lines[-1]'
+done
+
+subject="${commit_msg_lines[0]:-}"
+subject="${subject/#squash! /}"
+
+if [ -n "${subject// /}" ] && [[ $subject != 'fixup! '* ]]; then
+    if [ ${#commit_msg_lines[@]} -gt 1 ] && [ -n "${commit_msg_lines[1]}" ]; then
+        add_error "separate subject from body with a blank line"
+    fi
+
+    if [ ${#subject} -gt 72 ]; then
+        add_error "subject line too long (${#subject} chars, max 72)"
+    elif [ ${#subject} -gt 50 ]; then
+        add_warning "subject line over 50 chars (${#subject} chars)"
+    fi
+
+    first_char="${subject:0:1}"
+    if [[ $first_char =~ [a-z] ]]; then
+        add_error "capitalize the subject line"
+    fi
+
+    if [[ $subject =~ \.$ ]]; then
+        add_error "do not end the subject line with a period"
+    fi
+
+    imperative_mood_denylist=(
+        added adds adding
+        changed changes changing
+        fixed fixes fixing
+        implemented implements implementing
+        moved moves moving
+        refactored refactors refactoring
+        removed removes removing
+        renamed renames renaming
+        updated updates updating
+    )
+    shopt -s nocasematch
+    for word in "${imperative_mood_denylist[@]}"; do
+        if [[ $subject =~ ^[[:blank:]]*$word([[:blank:]]|$) ]]; then
+            add_error "use the imperative mood in the subject line"
+            break
+        fi
+    done
+    shopt -u nocasematch
+
+    if [ "$(echo "$subject" | wc -w)" -le 1 ]; then
+        add_error "provide a descriptive subject with more than one word"
+    fi
+
+    if [[ $subject =~ ^[a-z]+\([^\)]+\):[[:space:]] ]] || [[ $subject =~ ^[a-z]+!?:[[:space:]] ]]; then
+        add_error "avoid conventional commit prefixes such as feat: or fix:"
+    fi
+
+    if [[ $subject =~ ^[[:blank:]] ]]; then
+        add_error "do not start the subject line with whitespace"
+    fi
+
+    url_regex='(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]*[-A-Za-z0-9+&@#/%=~_|]'
+    trailer_regex='^(Change-Id|Closes|Acked-by|Co-authored-by|Reported-by|Reviewed-by|Signed-off-by|Suggested-by|Tested-by)[: ]'
+
+    for i in "${!commit_msg_lines[@]}"; do
+        [ "$i" -eq 0 ] && continue
+        line="${commit_msg_lines[$i]}"
+        trimmed="${line#"${line%%[![:space:]]*}"}"
+        trimmed="${trimmed%"${trimmed##*[![:space:]]}"}"
+        if [ "${#trimmed}" -gt 72 ] && ! [[ $trimmed =~ $url_regex ]] && ! [[ $trimmed =~ $trailer_regex ]]; then
+            add_warning "body line $((i + 1)) exceeds 72 chars (${#trimmed})"
+        fi
+    done
+
+    for line in "${commit_msg_lines[@]}"; do
+        if [[ $line == *'`'* ]]; then
+            add_error "avoid backticks in commit messages"
+            break
+        fi
+    done
+fi
+
+if [ ${#errors[@]} -gt 0 ]; then
+    printf "\n${RED}Commit message errors:${NC}\n" >&2
+    for error in "${errors[@]}"; do
+        printf "  ${RED}-${NC} %s\n" "$error" >&2
+    done
+fi
+
+if [ ${#warnings[@]} -gt 0 ]; then
+    printf "\n${YELLOW}Commit message warnings:${NC}\n" >&2
+    for warning in "${warnings[@]}"; do
+        printf "  ${YELLOW}!${NC} %s\n" "$warning" >&2
+    done
+fi
+
+if [ ${#errors[@]} -gt 0 ]; then
+    printf "\n${RED}Commit rejected. Fix the message above.${NC}\n" >&2
+    exit 1
+fi
+
+if grep -q '^Change-Id: I[0-9a-f]\{40\}' "$commit_msg_file"; then
+    exit 0
+fi
+
+clean_message=$(sed -e '/^#/d' -e '/^diff --git /{ s///; q; }' \
+    -e '/^Signed-off-by:/d' "$commit_msg_file" | git stripspace)
+[ -z "$clean_message" ] && exit 0
+
+gen_changeid_input()
+{
+    echo "tree $(git write-tree)"
+    local parent
+    if parent=$(git rev-parse "HEAD^0" 2>/dev/null); then
+        echo "parent $parent"
+    fi
+    echo "author $(git var GIT_AUTHOR_IDENT)"
+    echo "committer $(git var GIT_COMMITTER_IDENT)"
+    echo
+    printf '%s' "$clean_message"
+}
+
+if ! change_id=$(gen_changeid_input | git hash-object -t commit --stdin); then
+    throw "failed to generate Change-Id"
+fi
+blank_line=$(tail -n 1 "$commit_msg_file")
+if [ -n "$blank_line" ]; then
+    printf '\n' >>"$commit_msg_file"
+fi
+printf 'Change-Id: I%s\n' "$change_id" >>"$commit_msg_file"

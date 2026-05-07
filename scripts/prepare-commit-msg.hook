@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+commit_msg_file="$1"
+commit_source="${2:-}"
+
+case "$commit_source" in
+    message | template | merge | squash | commit)
+        exit 0
+        ;;
+esac
+
+if grep -qE '^[^[:space:]#]' "$commit_msg_file"; then
+    exit 0
+fi
+
+changed_files=$(git diff --cached --name-only)
+changed_files_commented=$(echo "$changed_files" | sed 's/^/# - /')
+
+{
+    echo
+    cat <<'EOF'
+#
+# Commit message rules (enforced by commit-msg hook):
+#  1. Separate subject from body with a blank line
+#  2. Limit the subject line to 50 characters (72 hard max)
+#  3. Capitalize the subject line
+#  4. Do not end the subject line with a period
+#  5. Use the imperative mood in the subject line
+#  6. Wrap the body at 72 characters
+#  7. Explain what changed and why
+#
+# Change-Id will be appended automatically.
+#
+# Staged files:
+EOF
+    if [ -n "$changed_files" ]; then
+        echo "$changed_files_commented"
+    else
+        echo "# (no staged files)"
+    fi
+} >"$commit_msg_file"

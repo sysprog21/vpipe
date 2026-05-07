@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+resolve_script_dir()
+{
+    local source="${BASH_SOURCE[0]}"
+    while [ -L "$source" ]; do
+        local dir
+        dir=$(cd -P "$(dirname "$source")" && pwd) || return 1
+        source=$(readlink "$source") || return 1
+        [[ $source != /* ]] && source="$dir/$source"
+    done
+    cd -P "$(dirname "$source")" && pwd
+}
+
+script_dir=$(resolve_script_dir)
+. "$script_dir/common.sh"
+set_colors
+check_ci
+
+tmpdir=$(mktemp -d)
+cleanup()
+{
+    rm -rf "$tmpdir"
+}
+trap cleanup EXIT INT TERM
+
+errors=()
+warnings=()
+
+add_error()
+{
+    errors+=("$1")
+}
+
+add_warning()
+{
+    warnings+=("$1")
+}
+
+staged_files=()
+while IFS= read -r -d '' path; do
+    staged_files+=("$path")
+done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+if [ ${#staged_files[@]} -eq 0 ]; then
+    exit 0
+fi
+
+if ! git diff --cached --check -- "${staged_files[@]}" >/dev/null; then
+    add_error "staged diff contains whitespace errors or conflict markers"
+fi
+
+for path in "${staged_files[@]}"; do
+    case "$path" in
+        externals/*)
+            continue
+            ;;
+    esac
+
+    blob="$tmpdir/$(basename "$path")"
+    if ! git show ":$path" >"$blob" 2>/dev/null; then
+        add_error "failed to read staged content for $path"
+        continue
+    fi
+
+    case "$path" in
+        *.sh | *.hook)
+            if ! bash -n "$blob"; then
+                add_error "shell syntax check failed for $path"
+            fi
+            ;;
+        *.py)
+            if ! python3 -m py_compile "$blob" >/dev/null 2>&1; then
+                add_error "python syntax check failed for $path"
+            fi
+            ;;
+    esac
+
+    case "$path" in
+        *.c | *.h | *.md | *.sh | *.hook | Makefile)
+            if grep -nE '\b(kernel|userspace)/' "$blob" >/dev/null; then
+                add_error "legacy path reference found in $path; use kmod/ or user/"
+            fi
+            ;;
+    esac
+done
+
+if [ ${#warnings[@]} -gt 0 ]; then
+    printf "\n${YELLOW}Pre-commit warnings:${NC}\n" >&2
+    for warning in "${warnings[@]}"; do
+        printf "  ${YELLOW}!${NC} %s\n" "$warning" >&2
+    done
+fi
+
+if [ ${#errors[@]} -gt 0 ]; then
+    printf "\n${RED}Pre-commit errors:${NC}\n" >&2
+    for error in "${errors[@]}"; do
+        printf "  ${RED}-${NC} %s\n" "$error" >&2
+    done
+    printf "\n${RED}Commit rejected. Fix the staged issues above.${NC}\n" >&2
+    exit 1
+fi
+
+printf "${GREEN}Pre-commit checks passed.${NC}\n"

@@ -1,0 +1,42 @@
+user/vpipe-capture-userptr.c
+  s_53c73a24fea989::t_6abe85a3d08f69 1-3,6-75,77-79,81-125,129-131,142-167,169-191,193,196-199,201-215,219-233,242,249,285-290,297-301,306-324
+  s_53c73a24fea989::t_30a2723189031a 4
+  s_53c73a24fea989::t_0ced6d03323c06 5
+  s_53c73a24fea989::t_166cc4290343e1 76,80
+  s_53c73a24fea989::t_aafa1fadcfe8c2 126
+  s_53c73a24fea989::t_50710cab407b7f 132-141
+  s_53c73a24fea989::t_3984e6184c4706 168
+  s_53c73a24fea989::t_ec983eaba89df3 192,194-195,200
+  s_53c73a24fea989::t_19a2abe66f8c0b 216,247-248,250-254,303-305
+  s_53c73a24fea989::t_3fb29e368df032 217-218,234-241,243,291-296,302
+  s_53c73a24fea989::t_8a3d4666b2ba3e 255,267-269,276-279,284
+  s_53c73a24fea989::t_ba4f7158d6c46a 263-266,270-275,280-283
+docs/benchmark.md
+  s_53c73a24fea989::t_567c0d1194e9ee 132-158
+.gitignore
+  s_53c73a24fea989::t_75a0b6b2f32c58 18
+scripts/bench_userptr.sh
+  s_53c73a24fea989::t_84cd58ed35f708 1-8,14-17
+  s_53c73a24fea989::t_35b842efe943f9 9-13
+scripts/summarize-benchmark.py
+  s_53c73a24fea989::t_aa28729726ff7e 165
+user/Makefile
+  s_53c73a24fea989::t_5566391e3d3566 8
+  s_53c73a24fea989::t_2ba5dfbc40185c 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "1b06585ac8988340f7c493f7b7738169d2fe1606",
+  "prompts": {},
+  "sessions": {
+    "s_53c73a24fea989": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e356000b-5350-47ea-b582-03726992f2f1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jim Huang <jserv@ccns.ncku.edu.tw>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+Makefile
+  s_a6d1b133dffd03::t_8382083f1ddb6a 47,53-55
+  s_ec656f3d5bbcb0::t_546f705cae1d2e 14,20-28,42-45,48-52,56-57
+  s_a6d1b133dffd03::t_f073a11029bc75 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "0f1c055c4cdba5b4501c74eb901729aab20fc02e",
+  "prompts": {},
+  "sessions": {
+    "s_a6d1b133dffd03": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019e0143-f874-7361-9383-c6e381fb4867",
+        "model": "gpt-5.4"
+      },
+      "human_author": "Jim Huang <jserv@ccns.ncku.edu.tw>"
+    },
+    "s_ec656f3d5bbcb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47a0e8a7-4914-4882-9bbd-a2af7c1c273f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jim Huang <jserv@ccns.ncku.edu.tw>"
+    }
+  }
+}

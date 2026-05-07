@@ -15,6 +15,7 @@ externals/
 user/*.o
 user/vpipe-capture-mmap
 user/vpipe-capture-read
+user/vpipe-capture-userptr
 user/vpipe-capture-m2m
 user/vpipe-capture-dmabuf
 user/vpipe-bench-fixture

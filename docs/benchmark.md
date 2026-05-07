@@ -129,3 +129,30 @@ reference + kernel
 | Path | Copies / frame | Context switches / frame | Latency median / p95 / p99 | Cache refs / misses | Timestamp source | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | explicit fence path | N/A | N/A | N/A | N/A | N/A | validated Ubuntu 25.10 lima guest (`6.17.0-22-generic`) exposes `request_fd` request support but no cited V4L2 userspace out-fence API, fence flags, or `fence_fd` field in the checked headers |
+
+## Phase 6: Cost Decomposition
+
+Phase 6 rows separate currently-aggregated costs into named knobs against the
+heap-backed Phase 4 baseline. Each row names its column additions explicitly.
+
+### USERPTR ingress (memory and cache cost)
+
+Buffer model column distinguishes the two USERPTR usage patterns vivid + vb2
+exposes; per-QBUF minor faults come from the `minor_faults_delta` column the
+harness records around each `VIDIOC_QBUF` ioctl.
+
+| Path | Buffer model | Per-QBUF minor faults (mean / p95 / max) | Latency median / p95 / p99 | mmap_lock_hold_us | Notes |
+| --- | --- | --- | --- | --- | --- |
+| vivid -> USERPTR (4-buffer pool) | fixed pool of 4 anon mmaps reused indefinitely | 0 / 0 / 0 | 132.778 / 137.110 / 138.562 ms | TBD (ftrace) | `__qbuf_userptr` caches the `(userptr, length)` -> pinned-page mapping per slot; re-QBUF on the same userptr reuses the existing pin and skips GUP entirely |
+| vivid -> USERPTR (fresh per QBUF) | fresh anon `mmap` per re-QBUF, allocated before the previous one is freed so the kernel cannot reuse the VA | 75 / 75 / 75 | 132.745 / 137.901 / 166.039 ms | TBD (ftrace) | 75 == `sizeimage / PAGE_SIZE`; vb2 cache miss forces a full GUP slow-path on each QBUF, charged to the calling thread; per-QBUF re-pin inflates p99 by ~22 ms over the cached row without moving the median |
+
+Validation conditions:
+
+- 600-frame run on Ubuntu 25.10 lima guest (`6.17.0-22-generic`, aarch64),
+  `vivid` 640x480 `V4L2_PIX_FMT_GREY` at 30 fps, 4 buffers
+- harness: `user/vpipe-capture-userptr.c`
+- summarizer: `scripts/summarize-benchmark.py phase_userptr <csv>`
+- artifacts: `bench/userptr-noreset.csv`, `bench/userptr-reset.csv`
+- `mmap_lock_hold_us` cell still depends on the ftrace `function_graph`
+  capture filtered to `mmap_read_lock`/`mmap_write_lock` around `VIDIOC_QBUF`
+  that the TODO calls out separately

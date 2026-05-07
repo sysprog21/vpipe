@@ -5,6 +5,7 @@ COMMON_OBJS := vpipe-common.o
 BINARIES := \
 	vpipe-capture-mmap \
 	vpipe-capture-read \
+	vpipe-capture-userptr \
 	vpipe-capture-m2m \
 	vpipe-capture-dmabuf \
 	vpipe-bench-fixture \
@@ -21,6 +22,7 @@ all: $(BINARIES) $(TEST_BINARIES)
 
 vpipe-capture-mmap: vpipe-capture-mmap.o $(COMMON_OBJS)
 vpipe-capture-read: vpipe-capture-read.o $(COMMON_OBJS)
+vpipe-capture-userptr: vpipe-capture-userptr.o $(COMMON_OBJS)
 vpipe-capture-m2m: vpipe-capture-m2m.o $(COMMON_OBJS)
 vpipe-capture-dmabuf: vpipe-capture-dmabuf.o $(COMMON_OBJS)
 vpipe-bench-fixture: vpipe-bench-fixture.o $(COMMON_OBJS)

@@ -1,0 +1,29 @@
+.ci/check-newline.sh
+  s_c3037e961844a9::t_3bafe2236f1dd1 1-20
+.ci/check-security.sh
+  s_c3037e961844a9::t_28e7c797cfcd2a 1-43
+.github/workflows/main.yml
+  s_c3037e961844a9::t_db77d3af1bdd4b 1-107
+.ci/check-cppcheck.sh
+  s_c3037e961844a9::t_1f04cbc8a16a23 1-33
+.ci/check-format.sh
+  s_c3037e961844a9::t_2f915903851ac4 9-14,21
+  s_c3037e961844a9::t_5398af45f54a8f 15
+  s_c3037e961844a9::t_6ce8c982616df8 1-8,16-20,22-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "f97de5f62ce00f46122bc33afc82765f7167072d",
+  "prompts": {},
+  "sessions": {
+    "s_c3037e961844a9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c07255f1-b847-4d1b-9557-93b0d3d1537f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jim Huang <jserv@ccns.ncku.edu.tw>"
+    }
+  }
+}

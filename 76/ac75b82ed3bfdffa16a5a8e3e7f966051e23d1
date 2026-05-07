@@ -1,0 +1,19 @@
+user/vpipe-capture-userptr.c
+  s_53c73a24fea989::t_3984e6184c4706 168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.1",
+  "base_commit_sha": "76ac75b82ed3bfdffa16a5a8e3e7f966051e23d1",
+  "prompts": {},
+  "sessions": {
+    "s_53c73a24fea989": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e356000b-5350-47ea-b582-03726992f2f1",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Jim Huang <jserv@ccns.ncku.edu.tw>"
+    }
+  }
+}
